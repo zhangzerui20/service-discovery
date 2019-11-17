@@ -1,8 +1,10 @@
 spring:
   application:
     name: eureka-server
+
 server:
   port: 11111
+
 eureka:
   instance:
     hostname: peer1
