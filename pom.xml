@@ -16,6 +16,21 @@
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
         <java.version>1.8</java.version>
         <spring-cloud.version>Finchley.SR2</spring-cloud.version>
+
+        <docker.jre>trecool/jre</docker.jre>
+        <docker.jre.version>1.8.0_171</docker.jre.version>
+        <java.opts>
+            -Dservice.name=${project.artifactId} \
+            -XX:+UnlockExperimentalVMOptions \
+            -Xms128m \
+            -Xmx512m \
+        </java.opts>
+        <jvm.Xms>1G</jvm.Xms>
+        <jvm.Xmx>1G</jvm.Xmx>
+        <pushImage>true</pushImage>
+        <docker.repository>ccr.ccs.tencentyun.com</docker.repository>
+        <docker.registry.name>trecool</docker.registry.name>
+
     </properties>
 
     <groupId>com.tre</groupId>
@@ -28,6 +43,97 @@
         <module>service-provider</module>
         <module>service-consumer</module>
     </modules>
+
+    <build>
+        <pluginManagement>
+            <plugins>
+                <plugin>
+                    <groupId>com.spotify</groupId>
+                    <artifactId>docker-maven-plugin</artifactId>
+                    <version>1.1.1</version>
+
+
+                    <configuration>
+                        <imageName>
+                            ${docker.repository}/${docker.registry.name}/${project.artifactId}:${git.commit.id.describe-short}
+                        </imageName>
+                        <registryUrl>${docker.repository}</registryUrl>
+                        <workdir>/work</workdir>
+                        <rm>true</rm>
+                        <env>
+                            <!--关于G1的一些参数说明您可以从这里获取到 https://www.oracle.com/technetwork/cn/articles/java/g1gc-1984535-zhs.html -->
+                            <!--设置时区-->
+                            <TZ>Asia/Shanghai</TZ>
+                            <!--初始化堆大小-->
+                            <JAVA_HEAP_XMS>${jvm.Xms}</JAVA_HEAP_XMS>
+                            <!--jvm最大可使用的堆-->
+                            <JAVA_HEAP_XMX>${jvm.Xmx}</JAVA_HEAP_XMX>
+
+                            <JAVA_OPTS>${java.opts}</JAVA_OPTS>
+                        </env>
+                        <baseImage>${docker.jre}:${docker.jre.version}</baseImage>
+                        <cmd>
+                            /sbin/tini java ${java.opts} -jar ${project.build.finalName}.jar
+                        </cmd>
+                        <!--是否推送image-->
+                        <pushImage>${pushImage}</pushImage>
+                        <resources>
+                            <resource>
+                                <directory>${project.build.directory}</directory>
+                                <include>${project.build.finalName}.jar</include>
+                            </resource>
+                        </resources>
+                        <!--这里与你的配置的私服id一致-->
+                        <serverId>aliyun-registry</serverId>
+                    </configuration>
+
+                </plugin>
+
+                <plugin>
+                    <groupId>pl.project13.maven</groupId>
+                    <artifactId>git-commit-id-plugin</artifactId>
+                    <version>2.2.4</version>
+                    <executions>
+                        <execution>
+                            <id>get-the-git-infos</id>
+                            <goals>
+                                <goal>revision</goal>
+                            </goals>
+                        </execution>
+                    </executions>
+                    <configuration>
+                        <!-- 使properties扩展到整个maven bulid 周期
+                        Ref: https://github.com/ktoso/maven-git-commit-id-plugin/issues/280 -->
+                        <injectAllReactorProjects>true</injectAllReactorProjects>
+                        <dateFormat>yyyyMMddHHmmss</dateFormat>
+                        <!--<useNativeGit>false</useNativeGit>-->
+                        <verbose>true</verbose>
+                        <dotGitDirectory>${project.basedir}/.git</dotGitDirectory>
+                        <!--若项目打包类型为pom,是否取消构建;默认值:true;-->
+                        <skipPoms>false</skipPoms>
+                        <!--是否生成"git.properties"文件;默认值:false;-->
+                        <generateGitPropertiesFile>true</generateGitPropertiesFile>
+                        <!--指定"git.properties"文件的存放路径(相对于${project.basedir}的一个路径);-->
+                        <generateGitPropertiesFilename>git.properties</generateGitPropertiesFilename>
+                        <!--git描述配置,可选;由JGit提供实现;-->
+                        <gitDescribe>
+                            <!--是否生成描述属性-->
+                            <skip>false</skip>
+                            <!--提交操作未发现tag时,仅打印提交操作ID,-->
+                            <always>false</always>
+                            <!--提交操作ID显式字符长度,最大值为:40;默认值:7; 0代表特殊意义;后面有解释; -->
+                            <abbrev>40</abbrev>
+                            <!--构建触发时,代码有修改时(即"dirty state"),添加指定后缀;默认值:"";-->
+                            <dirty>-dirty</dirty>
+                            <!--always print using the "tag-commits_from_tag-g_commit_id-maybe_dirty" format, even if "on" a tag. The distance will always be 0 if you're "on" the tag. -->
+                            <forceLongFormat>false</forceLongFormat>
+                        </gitDescribe>
+                    </configuration>
+                </plugin>
+
+            </plugins>
+        </pluginManagement>
+    </build>
 
     <dependencyManagement>
         <dependencies>

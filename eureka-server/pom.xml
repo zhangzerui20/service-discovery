@@ -7,10 +7,25 @@
         <groupId>com.tre</groupId>
         <version>1.0-SNAPSHOT</version>
     </parent>
+
     <modelVersion>4.0.0</modelVersion>
 
     <properties>
         <start-class>com.tre.server.ServerApplication</start-class>
+
+        <JAVA_OPTS>
+            -XX:+UnlockExperimentalVMOptions \
+            -XX:+UseCGroupMemoryLimitForHeap \
+            -XX:MaxRAMFraction=2 \
+            -XX:CICompilerCount=8 \
+            -XX:ActiveProcessorCount=8 \
+            -XX:+UseG1GC \
+            -XX:+AggressiveOpts \
+            -XX:+UseFastAccessorMethods \
+            -XX:+UseStringDeduplication \
+            -XX:+UseCompressedOops \
+            -XX:+OptimizeStringConcat
+        </JAVA_OPTS>
     </properties>
 
     <artifactId>eureka-server</artifactId>
@@ -40,6 +55,55 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-shade-plugin</artifactId>
+            </plugin>
+
+            <plugin>
+                <groupId>com.spotify</groupId>
+                <artifactId>docker-maven-plugin</artifactId>
+                <configuration>
+                    <imageName>
+                        ccr.ccs.tencentyun.com/trecool/eureka-server:v1.0.0
+                    </imageName>
+                    <workdir>/work</workdir>
+                    <rm>true</rm>
+                    <env>
+                        <TZ>Asia/Shanghai</TZ>
+                        <JAVA_OPTS>
+                            -XX:+UnlockExperimentalVMOptions \
+                            -XX:+UseCGroupMemoryLimitForHeap \
+                            -XX:MaxRAMFraction=2 \
+                            -XX:CICompilerCount=8 \
+                            -XX:ActiveProcessorCount=8 \
+                            -XX:+UseG1GC \
+                            -XX:+AggressiveOpts \
+                            -XX:+UseFastAccessorMethods \
+                            -XX:+UseStringDeduplication \
+                            -XX:+UseCompressedOops \
+                            -XX:+OptimizeStringConcat
+                        </JAVA_OPTS>
+                    </env>
+                    <baseImage>trecool/jre</baseImage>
+                    <cmd>
+                        /sbin/tini java ${JAVA_OPTS} -jar ${project.build.finalName}.jar
+                    </cmd>
+                    <!--是否推送image-->
+                    <pushImage>true</pushImage>
+                    <resources>
+                        <resource>
+                            <directory>${project.build.directory}</directory>
+                            <include>${project.build.finalName}.jar</include>
+                        </resource>
+                    </resources>
+                    <serverId>tke-registry</serverId>
+                </configuration>
+                <executions>
+                    <execution>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>build</goal>
+                        </goals>
+                    </execution>
+                </executions>
             </plugin>
         </plugins>
     </build>
